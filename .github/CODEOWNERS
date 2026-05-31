@@ -1,0 +1,9 @@
+# Every PR requires review from a Muxy maintainer before merge.
+# Replace with the maintainers team or individual handles.
+*       @muxy-app/maintainers
+
+# Tooling, schema, and CI are core-only.
+/schema/                @muxy-app/maintainers
+/scripts/               @muxy-app/maintainers
+/.github/               @muxy-app/maintainers
+/DESIGN.md              @muxy-app/maintainers

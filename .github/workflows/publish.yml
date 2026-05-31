@@ -1,0 +1,110 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/**"
+  workflow_dispatch:
+    inputs:
+      extensions:
+        description: "Space-separated extension names to (re)publish. Empty = none."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Pack, sign, and upload changed extensions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install tooling
+        run: npm ci
+
+      - name: Check publishing is configured
+        id: configured
+        env:
+          HAS_SIGNING_KEY: ${{ secrets.MINISIGN_SECRET_KEY != '' }}
+        run: |
+          if [ ! -f minisign.pub ] || grep -q "PLACEHOLDER" minisign.pub || grep -q "REPLACE ME" minisign.pub; then
+            echo "::notice::minisign.pub is missing or still the placeholder; skipping publish. Commit the real public key to enable."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_SIGNING_KEY" != "true" ]; then
+            echo "::notice::MINISIGN_SECRET_KEY secret is not set; skipping publish."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine changed extensions
+        id: changed
+        if: steps.configured.outputs.ready == 'true'
+        env:
+          DISPATCH_INPUT: ${{ github.event.inputs.extensions }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$DISPATCH_INPUT" ]; then
+            raw="$DISPATCH_INPUT"
+          else
+            before="$BEFORE_SHA"
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              before="HEAD~1"
+            fi
+            raw="$(git diff --name-only "$before" "$AFTER_SHA" -- extensions/ \
+              | awk -F/ 'NF>1 && $1=="extensions" {print $2}' \
+              | sort -u)"
+          fi
+
+          names=""
+          for name in $raw; do
+            if ! printf '%s' "$name" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]*$'; then
+              echo "::warning::skipping name with invalid characters: '$name'"
+              continue
+            fi
+            if [ ! -f "extensions/$name/manifest.json" ]; then
+              echo "skip $name (removed)"
+              continue
+            fi
+            names="$names $name"
+          done
+          names="$(printf '%s' "$names" | sed 's/^ *//')"
+          echo "names=$names" >> "$GITHUB_OUTPUT"
+          echo "Publishing: ${names:-<none>}"
+
+      - name: Validate changed extensions
+        if: steps.changed.outputs.names != ''
+        env:
+          NAMES: ${{ steps.changed.outputs.names }}
+        run: node scripts/validate.mjs $NAMES
+
+      - name: Install minisign
+        if: steps.changed.outputs.names != ''
+        run: sudo apt-get update && sudo apt-get install -y minisign
+
+      - name: Pack, sign, and upload
+        if: steps.changed.outputs.names != ''
+        env:
+          NAMES: ${{ steps.changed.outputs.names }}
+          MUXY_UPLOAD_URL: https://muxy.app/api/extensions/upload
+          MUXY_UPLOAD_TOKEN: ${{ secrets.MUXY_UPLOAD_TOKEN }}
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: node scripts/publish.mjs $NAMES

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Extension author guide
+    url: https://muxy.app
+    about: How to build a Muxy extension (manifest, window.muxy API, theming).
