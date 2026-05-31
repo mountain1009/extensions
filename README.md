@@ -5,6 +5,13 @@ repo, build an extension, and open a pull request to get it listed. Once merged,
 each extension is packaged, hashed, and published as a tamper-evident artifact
 that the Muxy desktop app can verify and install.
 
+> **Building an extension?** The complete author guide — manifest fields, the
+> `window.muxy` API, permissions, theming, the manifest schema, and a copyable
+> example — lives in the Muxy app repo under
+> [`docs/extensions`](https://github.com/muxy-app/muxy/tree/main/docs/extensions),
+> including the [contributing guide](https://github.com/muxy-app/muxy/blob/main/docs/extensions/contributing.md).
+> This repo is only the publishing pipeline.
+
 ## How it works
 
 ```
@@ -21,11 +28,13 @@ Fork → develop in extensions/<name>/ → open PR
 
 ```
 extensions/<name>/      one directory per extension (name == manifest.name)
-schema/                 manifest.schema.json — the manifest contract
 scripts/                validate / pack / publish tooling (Node, no app needed)
-examples/hello-world/   a copyable starter extension
 .github/                CI workflows, issue + PR templates, CODEOWNERS
 ```
+
+The manifest schema is owned by the Muxy app repo
+([`muxy-app/muxy`](https://github.com/muxy-app/muxy/blob/main/docs/extensions/schema/manifest.schema.json));
+the validation tooling fetches it at runtime.
 
 ## Browse and install
 
@@ -35,26 +44,23 @@ time. You do not install extensions by cloning this repo.
 
 ## Contribute an extension
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the publishing flow. The short version:
 
 ```bash
-# 1. Fork, then copy the starter
-cp -R examples/hello-world extensions/my-extension
+# 1. Fork, then create your extension directory.
+#    Start from the example in the Muxy docs:
+#    https://github.com/muxy-app/muxy/tree/main/docs/extensions/examples/hello-world
+#    Set manifest.name to the directory name (e.g. "my-extension").
 
-# 2. Rename it: set manifest.name to "my-extension" (must match the directory)
-
-# 3. Build your extension (see the author guide linked below)
-
-# 4. Validate locally
+# 2. Validate locally
 npm install
 node scripts/validate.mjs my-extension
 
-# 5. Commit, push, open a PR
+# 3. Commit, push, open a PR
 ```
 
-The complete extension author guide — manifest fields, the `window.muxy` API,
-permissions, and theming — ships inside Muxy and is mirrored at
-[muxy.app](https://muxy.app).
+The author guide and example live in the Muxy app repo under
+[`docs/extensions`](https://github.com/muxy-app/muxy/tree/main/docs/extensions).
 
 ## Integrity
 

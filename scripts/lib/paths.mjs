@@ -4,7 +4,19 @@ import fs from "node:fs";
 
 export const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 export const extensionsDir = path.join(repoRoot, "extensions");
-export const schemaPath = path.join(repoRoot, "schema", "manifest.schema.json");
+
+// The manifest schema is owned by the Muxy app repo (muxy-app/muxy). This repo no
+// longer keeps a local copy; the tooling fetches it from there at validation time.
+export const schemaURL =
+  "https://raw.githubusercontent.com/muxy-app/muxy/main/docs/extensions/schema/manifest.schema.json";
+
+export async function fetchSchema() {
+  const res = await fetch(schemaURL);
+  if (!res.ok) {
+    throw new Error(`failed to fetch manifest schema from ${schemaURL} (HTTP ${res.status})`);
+  }
+  return res.json();
+}
 
 export function listExtensionNames() {
   if (!fs.existsSync(extensionsDir)) return [];

@@ -6,16 +6,16 @@ import addFormats from "ajv-formats";
 import {
   extensionDir,
   extensionsDir,
+  fetchSchema,
   listExtensionNames,
   readJSON,
   resolveInside,
-  schemaPath,
 } from "./lib/paths.mjs";
 import { inspectIcon, inspectScreenshot } from "./lib/images.mjs";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv);
-const validateManifest = ajv.compile(readJSON(schemaPath));
+const validateManifest = ajv.compile(await fetchSchema());
 
 function iconSVG(icon) {
   if (icon && typeof icon === "object" && typeof icon.svg === "string") return icon.svg;

@@ -1,13 +1,22 @@
-# Contributing an extension
+# Publishing an extension
 
-Thanks for building for Muxy. This guide takes you from idea to a merged,
-published extension.
+This repo is the publishing pipeline for Muxy extensions. This guide covers the
+fork → validate → PR → publish flow.
+
+> **Looking for the author guide?** How to actually *build* an extension — every
+> manifest field, the `window.muxy` API, permissions, and theming — lives in the
+> Muxy app repo under
+> [`docs/extensions`](https://github.com/muxy-app/muxy/tree/main/docs/extensions),
+> with a copyable example at
+> [`examples/hello-world`](https://github.com/muxy-app/muxy/tree/main/docs/extensions/examples/hello-world)
+> and the manifest schema at
+> [`schema/manifest.schema.json`](https://github.com/muxy-app/muxy/blob/main/docs/extensions/schema/manifest.schema.json).
 
 ## 1. Fork and scaffold
 
-Fork this repo, then copy the starter into the `extensions/` folder. The
-directory name **must** equal `manifest.name` (letters, digits, dash,
-underscore, dot; no leading dot).
+Fork this repo, then create your extension under `extensions/`. The directory
+name **must** equal `manifest.name` (letters, digits, dash, underscore, dot; no
+leading dot).
 
 > **Don't full-clone.** This repo holds every published extension and grows
 > large over time. Use a partial + sparse checkout so you only download your own
@@ -16,36 +25,29 @@ underscore, dot; no leading dot).
 > ```bash
 > git clone --filter=blob:none --sparse https://github.com/muxy-app/extensions
 > cd extensions
-> git sparse-checkout set extensions/my-extension scripts schema examples
+> git sparse-checkout set extensions/my-extension scripts
 > ```
 
-```bash
-cp -R examples/hello-world extensions/my-extension
-# edit extensions/my-extension/manifest.json → "name": "my-extension"
-```
+Start from the example in the Muxy app repo
+([`examples/hello-world`](https://github.com/muxy-app/muxy/tree/main/docs/extensions/examples/hello-world)),
+copy it into `extensions/my-extension/`, and set `manifest.name` to
+`my-extension`.
 
 Keep the `"$schema"` line at the top of `manifest.json` — it gives editors
-autocomplete and inline validation against
-[`schema/manifest.schema.json`](schema/manifest.schema.json). The Muxy app
-ignores it.
+autocomplete and inline validation against the schema in the Muxy app repo
+([`muxy-app/muxy`](https://github.com/muxy-app/muxy/blob/main/docs/extensions/schema/manifest.schema.json)).
+The Muxy app ignores it.
 
 ## 2. Build it
 
-An extension is a directory with a `manifest.json` and its resources (tab /
-panel / popover HTML, an optional `background.js`, `runScript` scripts, icons,
-assets). Two surfaces are available:
-
-- **UI pages** (tabs, panels, popovers) get the full `window.muxy` API.
-- **`background.js`** (optional) gets a small `muxy` global for events and shell
-  commands.
-
-The complete author guide — every manifest field, the `window.muxy` API,
-permissions, and theming — ships inside Muxy and is mirrored at
-[muxy.app](https://muxy.app). Follow it; CI enforces the same rules the app does.
+Follow the [author guide](https://github.com/muxy-app/muxy/tree/main/docs/extensions)
+in the Muxy app repo. CI here enforces the same rules the app does.
 
 ### Rules CI enforces
 
-- `manifest.json` matches [`schema/manifest.schema.json`](schema/manifest.schema.json).
+- `manifest.json` matches the
+  [manifest schema](https://github.com/muxy-app/muxy/blob/main/docs/extensions/schema/manifest.schema.json)
+  in the Muxy app repo.
 - Directory name equals `manifest.name`.
 - Every referenced file (`background`, tab/panel/popover `entry`, command
   `script`, SVG icons) exists and stays inside your directory.
@@ -70,6 +72,9 @@ node scripts/validate.mjs my-extension     # one extension
 node scripts/validate.mjs                   # all extensions
 node scripts/pack.mjs --dry-run my-extension  # prove it zips + see its hash
 ```
+
+Validation fetches the manifest schema from the `muxy-app/muxy` repo at runtime,
+so you need network access the first time you run it.
 
 ## 4. Listing metadata, icon, and screenshots (required)
 
