@@ -32,6 +32,8 @@ import {
 /** Imperative handle every editor child exposes so save() is editor-agnostic. */
 export interface EditorHandle {
   getValue(): string;
+  /** Open the find panel. No-op if the underlying editor isn't searchable. */
+  openSearch(): void;
 }
 
 /** Props shared by both editor children. */
@@ -88,6 +90,7 @@ export function Editor() {
 
   const { filePath } = data;
   const replaceable = data.replaceable !== false;
+  const markdown = filePath ? is_markdown(filePath) : false;
 
   const publishEditorState = useCallback(
     (nextDirty = dirtyRef.current) => {
@@ -203,6 +206,24 @@ export function Editor() {
     return unsubscribe;
   }, [onSave]);
 
+  useEffect(() => {
+    const unsubscribe = muxy.events.subscribe("command.files-find", () => {
+      // Cmd+F is a global Muxy command shortcut (it never reaches the webview
+      // on its own), so it fans out to every open editor tab — gate on focus
+      // like save. Markdown Preview has no live editor; flip to Edit first so
+      // there's something to search. The mode switch mounts the CodeEditor
+      // asynchronously, so defer openSearch to the next frame in that case.
+      if (!document.hasFocus()) return;
+      if (markdown && mdMode === "preview") {
+        setMdMode("edit");
+        requestAnimationFrame(() => editorRef.current?.openSearch());
+        return;
+      }
+      editorRef.current?.openSearch();
+    });
+    return unsubscribe;
+  }, [markdown, mdMode]);
+
   const onReveal = useCallback(() => {
     if (filePath) void reveal_in_finder(filePath);
   }, [filePath]);
@@ -218,8 +239,6 @@ export function Editor() {
       </div>
     );
   }
-
-  const markdown = is_markdown(filePath);
 
   return (
     <div className="editor">

@@ -43,10 +43,15 @@ export const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(
       prevMode.current = mode;
     }, [mode]);
 
-    // Save reads the live buffer when editing, else the last snapshot.
+    // Save reads the live buffer when editing, else the last snapshot. Search
+    // only exists in Edit mode (Preview is plain HTML with native find), so
+    // openSearch delegates to the inner CodeEditor when present.
     useImperativeHandle(
       ref,
-      () => ({ getValue: () => codeRef.current?.getValue() ?? source }),
+      () => ({
+        getValue: () => codeRef.current?.getValue() ?? source,
+        openSearch: () => codeRef.current?.openSearch(),
+      }),
       [source],
     );
 
