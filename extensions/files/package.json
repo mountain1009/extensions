@@ -87,6 +87,11 @@
       {
         "id": "files-new-folder",
         "title": "New Folder"
+      },
+      {
+        "id": "files-save",
+        "title": "Save File",
+        "defaultShortcut": "cmd+s"
       }
     ],
     "topbarItems": [
@@ -98,6 +103,14 @@
         "tooltip": "Toggle Files",
         "command": "toggle-files"
       }
-    ]
+    ],
+    "marketplace": {
+      "author": "Saeed Vaziry",
+      "github": "saeedvaziry",
+      "repository": "https://github.com/muxy-app/extensions",
+      "categories": ["files", "explorer"],
+      "icon": "icon.svg",
+      "screenshots": ["screenshots/screenshot-1.png"]
+    }
   }
 }

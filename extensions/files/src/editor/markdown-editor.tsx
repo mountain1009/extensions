@@ -28,7 +28,7 @@ interface MarkdownEditorProps extends EditorChildProps {
 }
 
 export const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(
-  function MarkdownEditor({ value, isDark, filePath, config, mode, onDirty }, ref) {
+  function MarkdownEditor({ value, isDark, filePath, config, mode, onDirty, onSave }, ref) {
     // Source shown in Preview. Seeded from the loaded value; refreshed from the
     // live CodeEditor buffer whenever we leave Edit.
     const [source, setSource] = useState(value);
@@ -61,6 +61,7 @@ export const MarkdownEditor = forwardRef<EditorHandle, MarkdownEditorProps>(
         isDark={isDark}
         config={config}
         onDirty={onDirty}
+        onSave={onSave}
       />
     );
   },

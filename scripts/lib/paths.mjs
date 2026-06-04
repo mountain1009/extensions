@@ -10,12 +10,24 @@ export const extensionsDir = path.join(repoRoot, "extensions");
 export const schemaURL =
   "https://raw.githubusercontent.com/muxy-app/muxy/main/docs/extensions/schema/manifest.schema.json";
 
+// Permissions the live app and docs ship that the published schema enum may not
+// yet list. Merged into the fetched schema so a lagging schema doesn't reject a
+// valid manifest. Drop entries here once they land in muxy-app/muxy's schema.
+export const EXTRA_PERMISSIONS = ["files:read", "files:write"];
+
 export async function fetchSchema() {
   const res = await fetch(schemaURL);
   if (!res.ok) {
     throw new Error(`failed to fetch manifest schema from ${schemaURL} (HTTP ${res.status})`);
   }
-  return res.json();
+  const schema = await res.json();
+  const permEnum = schema?.$defs?.permission?.enum;
+  if (Array.isArray(permEnum)) {
+    for (const perm of EXTRA_PERMISSIONS) {
+      if (!permEnum.includes(perm)) permEnum.push(perm);
+    }
+  }
+  return schema;
 }
 
 export function listExtensionNames() {

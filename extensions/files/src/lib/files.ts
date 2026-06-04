@@ -8,6 +8,8 @@
 // the paths we hand to muxy.files.*; there is no separate absolute "root". We
 // keep tiny path helpers for the trailing-slash directory convention only.
 
+import { has_dirty_replaceable_editor_for_other_file } from "@/lib/editor-state";
+
 // --- Path helpers -----------------------------------------------------------
 
 /** Strip a trailing slash (directory paths in the tree are canonicalized with one). */
@@ -98,13 +100,14 @@ export async function try_action(action: () => Promise<unknown>, error_title: st
 
 export async function open_in_editor(rel: string): Promise<void> {
   try {
+    const singleton = !has_dirty_replaceable_editor_for_other_file(rel);
     await muxy.tabs.open({
       kind: "extensionWebView",
       extension: {
         id: muxy.extensionID,
         tabType: "editor",
-        singleton: true,
-        data: { filePath: rel },
+        singleton,
+        data: { filePath: rel, replaceable: singleton },
       },
     });
   } catch {

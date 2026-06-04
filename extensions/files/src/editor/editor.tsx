@@ -23,6 +23,11 @@ import {
   SettingsIcon,
 } from "@/editor/icons";
 import { use_editor_config } from "@/hooks/use-editor-config";
+import {
+  clear_editor_state,
+  create_editor_state_id,
+  write_editor_state,
+} from "@/lib/editor-state";
 
 /** Imperative handle every editor child exposes so save() is editor-agnostic. */
 export interface EditorHandle {
@@ -34,10 +39,12 @@ export interface EditorChildProps {
   value: string;
   isDark: boolean;
   onDirty: () => void;
+  onSave: () => void | Promise<void>;
 }
 
 interface EditorData {
   filePath?: string;
+  replaceable?: boolean;
 }
 
 function read_data(): EditorData {
@@ -57,6 +64,8 @@ export function Editor() {
   const [showSettings, setShowSettings] = useState(false);
   const [mdMode, setMdMode] = useState<MarkdownMode>("preview");
   const [config, updateConfig] = use_editor_config();
+  const editorStateId = useRef(create_editor_state_id());
+  const dirtyRef = useRef(false);
 
   // The mounted child reassigns this ref; save() reads whichever is live.
   const editorRef = useRef<EditorHandle | null>(null);
@@ -78,6 +87,36 @@ export function Editor() {
   }, []);
 
   const { filePath } = data;
+  const replaceable = data.replaceable !== false;
+
+  const publishEditorState = useCallback(
+    (nextDirty = dirtyRef.current) => {
+      write_editor_state(editorStateId.current, {
+        dirty: nextDirty,
+        filePath,
+        replaceable,
+      });
+    },
+    [filePath, replaceable],
+  );
+
+  useEffect(() => {
+    dirtyRef.current = dirty;
+    publishEditorState(dirty);
+  }, [dirty, publishEditorState]);
+
+  useEffect(() => {
+    const heartbeat = window.setInterval(() => publishEditorState(), 2000);
+    const clear = () => clear_editor_state(editorStateId.current);
+    window.addEventListener("pagehide", clear);
+    window.addEventListener("beforeunload", clear);
+    return () => {
+      window.clearInterval(heartbeat);
+      window.removeEventListener("pagehide", clear);
+      window.removeEventListener("beforeunload", clear);
+      clear();
+    };
+  }, [publishEditorState]);
 
   // Load the file whenever the target path changes. A freshly loaded file is
   // clean; both editors avoid firing onDirty on programmatic value/remount.
@@ -86,6 +125,7 @@ export function Editor() {
       setContent(null);
       setError(null);
       setLoading(false);
+      dirtyRef.current = false;
       setDirty(false);
       return;
     }
@@ -97,6 +137,7 @@ export function Editor() {
       .then((file) => {
         if (cancelled) return;
         setContent(file.content);
+        dirtyRef.current = false;
         setDirty(false);
         setMdMode("preview");
       })
@@ -114,7 +155,11 @@ export function Editor() {
     };
   }, [filePath]);
 
-  const markDirty = useCallback(() => setDirty(true), []);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+    publishEditorState(true);
+    setDirty(true);
+  }, [publishEditorState]);
 
   // Explicit save only — never autosave, so we don't race the file.changed watcher.
   const onSave = useCallback(async () => {
@@ -126,19 +171,36 @@ export function Editor() {
       "Save failed",
     );
     setSaving(false);
-    if (ok) setDirty(false);
-  }, [filePath, saving]);
+    if (ok) {
+      dirtyRef.current = false;
+      publishEditorState(false);
+      setDirty(false);
+    }
+  }, [filePath, publishEditorState, saving]);
 
   // Cmd/Ctrl+S anywhere in the tab webview.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        if (e.shiftKey || e.altKey) return;
         e.preventDefault();
+        e.stopPropagation();
         void onSave();
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [onSave]);
+
+  useEffect(() => {
+    const unsubscribe = muxy.events.subscribe("command.files-save", () => {
+      // Cmd+S is a global Muxy command shortcut, so it fans out to every open
+      // editor tab. Only the focused tab should save — visibilityState alone is
+      // unreliable for hosted webviews, so gate on actual focus.
+      if (!document.hasFocus()) return;
+      void onSave();
+    });
+    return unsubscribe;
   }, [onSave]);
 
   const onReveal = useCallback(() => {
@@ -247,6 +309,7 @@ export function Editor() {
             config={config}
             mode={mdMode}
             onDirty={markDirty}
+            onSave={onSave}
           />
         ) : (
           <CodeEditor
@@ -256,6 +319,7 @@ export function Editor() {
             isDark={isDark}
             config={config}
             onDirty={markDirty}
+            onSave={onSave}
           />
         )}
       </div>
@@ -269,4 +333,3 @@ export function Editor() {
     </div>
   );
 }
-

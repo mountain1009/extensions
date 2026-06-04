@@ -249,22 +249,20 @@ function validateExtension(name) {
     return report;
   }
 
-  // The schema (fetched from muxy-app/muxy) describes the Muxy manifest body:
-  // name + version + the manifest fields. Validate the flattened view (muxy
-  // fields merged with the top-level name/version) against it; the npm-level
-  // requirements (build script, lockfile) are enforced in code below.
+  // The schema (fetched from muxy-app/muxy) describes the whole package.json:
+  // top-level name + version + scripts, with the manifest body under `muxy`.
+  // Validate the real package as shipped; `manifest`/`muxy` are the flattened
+  // views the resource and cross-reference checks below read from. The lockfile
+  // requirement is enforced in code (npm-level, not in the schema).
   const { manifest, muxy } = readPackageManifest(dir);
 
-  if (!validateManifest(manifest)) {
+  if (!validateManifest(pkg)) {
     for (const err of validateManifest.errors ?? []) {
       report.error(`manifest${err.instancePath} ${err.message}`);
     }
     return report;
   }
 
-  if (!pkg.scripts || typeof pkg.scripts.build !== "string" || pkg.scripts.build.length === 0) {
-    report.error("package.json must define a `build` script (e.g. \"vite build\")");
-  }
   if (!fs.existsSync(path.join(dir, "package-lock.json"))) {
     report.error("package-lock.json is required (run `npm install` and commit the lockfile)");
   }

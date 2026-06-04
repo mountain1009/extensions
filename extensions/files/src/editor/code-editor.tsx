@@ -15,8 +15,8 @@ import {
 } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { indentUnit } from "@codemirror/language";
-import { EditorView } from "@codemirror/view";
-import type { Extension } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
+import { Prec, type Extension } from "@codemirror/state";
 import { muxy_cm_theme } from "@/lib/editor-theme";
 import { muxy_highlight_style } from "@/lib/syntax-theme";
 import { language_for } from "@/lib/languages";
@@ -30,7 +30,7 @@ interface CodeEditorProps extends EditorChildProps {
 }
 
 export const CodeEditor = forwardRef<EditorHandle, CodeEditorProps>(
-  function CodeEditor({ value, isDark, filePath, config, onDirty }, ref) {
+  function CodeEditor({ value, isDark, filePath, config, onDirty, onSave }, ref) {
     // Live text, read synchronously on save. Seeded from the loaded value.
     const valueRef = useRef(value);
     const [lang, setLang] = useState<Extension | null>(null);
@@ -62,6 +62,18 @@ export const CodeEditor = forwardRef<EditorHandle, CodeEditorProps>(
 
     const extensions = useMemo(() => {
       const exts: Extension[] = [
+        Prec.highest(
+          keymap.of([
+            {
+              key: "Mod-s",
+              preventDefault: true,
+              run: () => {
+                void onSave();
+                return true;
+              },
+            },
+          ]),
+        ),
         muxy_cm_theme(isDark),
         muxy_highlight_style(),
         theme,
@@ -70,7 +82,7 @@ export const CodeEditor = forwardRef<EditorHandle, CodeEditorProps>(
       if (config.wordWrap) exts.push(EditorView.lineWrapping);
       if (lang) exts.push(lang);
       return exts;
-    }, [isDark, theme, config.tabSize, config.wordWrap, lang]);
+    }, [isDark, theme, config.tabSize, config.wordWrap, lang, onSave]);
 
     return (
       <CodeMirror
