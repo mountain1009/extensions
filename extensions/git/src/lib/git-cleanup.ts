@@ -34,6 +34,22 @@ export async function remove_active_worktree(branch: string | null, force: boole
   await muxy.worktrees.refresh();
 }
 
+export async function remove_worktree_or_branch({
+  branch,
+  defaultBranch,
+  dirty,
+}: CleanupTarget): Promise<void> {
+  if (await is_on_worktree()) {
+    await remove_active_worktree(branch, dirty);
+  } else if (branch) {
+    if (defaultBranch && defaultBranch !== branch) {
+      await muxy.git.branch.switchTo({ branch: defaultBranch });
+    }
+    await exec_git(await active_worktree_path(), ["branch", "-D", branch], "Could not delete branch");
+    await muxy.git.branch.deleteRemote({ branch }).catch(() => undefined);
+  }
+}
+
 export async function cleanup_branch({ branch, defaultBranch, dirty }: CleanupTarget): Promise<boolean> {
   if (!branch) return false;
 
@@ -55,15 +71,7 @@ export async function cleanup_branch({ branch, defaultBranch, dirty }: CleanupTa
   if (!ok) return false;
 
   try {
-    if (isWorktree) {
-      await remove_active_worktree(branch, dirty);
-    } else {
-      if (defaultBranch && defaultBranch !== branch) {
-        await muxy.git.branch.switchTo({ branch: defaultBranch });
-      }
-      await exec_git(await active_worktree_path(), ["branch", "-D", branch], "Could not delete branch");
-      await muxy.git.branch.deleteRemote({ branch }).catch(() => undefined);
-    }
+    await remove_worktree_or_branch({ branch, defaultBranch, dirty });
     return true;
   } catch (err) {
     await alert_error("Cleanup failed", err);

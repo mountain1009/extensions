@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { GitPullRequest, Loader2 } from "lucide-react";
 import { alert_error } from "@/lib/git";
-import { cleanup_branch, is_on_worktree, remove_active_worktree } from "@/lib/git-cleanup";
+import { cleanup_branch, remove_worktree_or_branch } from "@/lib/git-cleanup";
 import { merge_pr, close_pr, type MergeMethod } from "@/lib/git-prs";
 import { read_pr_cache, write_pr_cache, clear_pr_cache } from "@/lib/pr-cache";
 import { CurrentPrContent, type PrAction } from "@/components/current-pr-content";
@@ -56,11 +56,13 @@ export function PrInfoPanel() {
   const merge = useCallback(async (number: number, method: MergeMethod, deleteBranch: boolean) => {
     set_pending(method);
     try {
-      const onWorktree = deleteBranch && (await is_on_worktree());
-      await merge_pr(number, method, deleteBranch && !onWorktree);
-      if (onWorktree) {
-        const branch = state.kind === "ready" ? state.branch : null;
-        await remove_active_worktree(branch, false);
+      await merge_pr(number, method, false);
+      if (deleteBranch && state.kind === "ready") {
+        await remove_worktree_or_branch({
+          branch: state.branch,
+          defaultBranch: state.defaultBranch,
+          dirty: false,
+        });
       }
       await clear_pr_cache();
       return true;
