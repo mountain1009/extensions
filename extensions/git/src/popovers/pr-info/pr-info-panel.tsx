@@ -56,8 +56,12 @@ export function PrInfoPanel() {
 
   const merge = useCallback(async (number: number, method: MergeMethod, deleteBranch: boolean) => {
     set_pending(method);
+    let cleanupProject: string | undefined;
     try {
-      await run_pinned((project) => merge_pr(number, method, false, project));
+      await run_pinned((project) => {
+        cleanupProject = project;
+        return merge_pr(number, method, false, project);
+      });
     } catch (err) {
       await alert_error(`Could not merge PR #${number}`, err);
       set_pending(null);
@@ -65,11 +69,14 @@ export function PrInfoPanel() {
     }
     try {
       if (deleteBranch && state.kind === "ready") {
-        await remove_worktree_or_branch({
-          branch: state.branch,
-          defaultBranch: state.defaultBranch,
-          dirty: false,
-        });
+        await remove_worktree_or_branch(
+          {
+            branch: state.branch,
+            defaultBranch: state.defaultBranch,
+            dirty: false,
+          },
+          cleanupProject,
+        );
       }
     } catch (err) {
       await alert_error(`PR #${number} merged, but branch cleanup failed`, err);

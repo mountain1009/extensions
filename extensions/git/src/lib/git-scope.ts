@@ -1,10 +1,7 @@
+import { active_git_project_path } from "@/lib/project-scope";
+
 export async function active_project(): Promise<string | undefined> {
-  try {
-    const projects = await muxy.projects.list();
-    return projects.find((p) => p.isActive)?.path ?? projects[0]?.path;
-  } catch {
-    return undefined;
-  }
+  return active_git_project_path();
 }
 
 let depth = 0;

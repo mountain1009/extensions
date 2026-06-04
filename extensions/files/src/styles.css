@@ -6,9 +6,13 @@
   --s5: 10px;
   --s6: 12px;
   --s7: 16px;
+  --s8: 20px;
+  --s9: 24px;
   --font-footnote: 11px;
   --font-body: 12px;
+  --font-emphasis: 13px;
   --font-title: 14px;
+  --control: 24px;
   --radius: 6px;
 }
 
@@ -162,42 +166,112 @@ body {
   color: var(--muxy-foreground);
 }
 
-.editor-header {
+/* Topbar matches the native tab bar: content-box + --muxy-topbar-height so the
+   border-bottom lands on the same line as native tabs and split panes align.
+   Mirrors the git extension's diff-viewer .topbar. */
+.topbar {
+  box-sizing: content-box;
   display: flex;
+  height: var(--muxy-topbar-height, 32px);
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s4);
-  padding: var(--s4) var(--s6);
+  gap: var(--s3);
+  min-width: 0;
+  padding: 0 var(--s5);
   border-bottom: 1px solid var(--muxy-border);
-  background: var(--muxy-surface);
+  background: var(--muxy-background);
 }
 
-.editor-filename {
-  font-size: var(--font-title);
-  font-weight: 600;
+.editor-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.editor-name {
   overflow: hidden;
+  color: var(--muxy-foreground);
+  font-size: var(--font-emphasis, 13px);
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.editor-actions {
-  display: flex;
+.editor-dirty {
   flex-shrink: 0;
-  gap: var(--s3);
+  width: var(--s3);
+  height: var(--s3);
+  border-radius: 50%;
+  background: var(--muxy-accent);
+}
+
+.topbar-segmented {
+  flex: 0 0 auto;
+}
+
+.toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--s2);
+}
+
+/* 24x24 transparent icon button — the native tool-button treatment. */
+.tool-button {
+  display: inline-flex;
+  width: var(--control, 24px);
+  height: var(--control, 24px);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muxy-foreground-muted);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: var(--muxy-hover);
+  color: var(--muxy-foreground);
+}
+
+.tool-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Save glows accent while there are unsaved changes. */
+.tool-button-accent:not(:disabled) {
+  color: var(--muxy-accent);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 var(--s1);
+  flex-shrink: 0;
+  background: var(--muxy-border);
 }
 
 .editor-body {
+  display: flex;
   flex: 1;
   min-height: 0;
+  flex-direction: column;
   overflow: auto;
 }
 
-.editor-content {
-  margin: 0;
-  padding: var(--s6);
-  font: var(--font-body) "SF Mono", Menlo, monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button:disabled:hover {
+  background: var(--muxy-surface);
 }
 
 .editor-status {
@@ -218,4 +292,338 @@ body {
   height: 100vh;
   color: var(--muxy-foreground-muted);
   font-size: var(--font-body);
+}
+
+/* --- editor host: makes CodeMirror / preview fill the body --- */
+/* .editor-body is flex:1 + min-height:0, so height:100% here resolves. */
+.editor-host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-host .cm-editor {
+  height: 100%;
+}
+
+.editor-host .cm-scroller {
+  /* font-family only — font-size is owned by EditorView.theme (settings) so the
+     shorthand `font:` must NOT be used here; it would pin font-size and override
+     the configurable size. */
+  font-family: "SF Mono", Menlo, monospace;
+}
+
+/* --- rendered markdown preview --- */
+/* Carries .editor-host to fill the body, but content must flow as a normal
+   scrolling block — not a flex column (which clips/shrinks children like <pre>). */
+.md-preview {
+  display: block;
+  overflow: auto;
+  padding: var(--s6) var(--s7);
+  line-height: 1.7;
+}
+
+.md-preview > :first-child {
+  margin-top: 0;
+}
+
+.md-preview h1,
+.md-preview h2,
+.md-preview h3,
+.md-preview h4 {
+  margin: 0.6em 0 0.3em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* A heading that follows another block gets a moderate top gap — enough to
+   set off a new section, without the full stacked margin looking airy. */
+.md-preview * + h1,
+.md-preview * + h2,
+.md-preview * + h3,
+.md-preview * + h4 {
+  margin-top: 1.3em;
+}
+
+.md-preview h1 {
+  font-size: 1.4em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--muxy-border);
+}
+
+.md-preview h2 {
+  font-size: 1.2em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--muxy-border);
+}
+
+.md-preview h3 {
+  font-size: 1.08em;
+}
+
+.md-preview p,
+.md-preview ul,
+.md-preview ol {
+  margin: 0 0 0.8em;
+}
+
+.md-preview ul,
+.md-preview ol {
+  padding-left: 1.6em;
+}
+
+.md-preview li {
+  margin: 0.25em 0;
+}
+
+.md-preview li > ul,
+.md-preview li > ol {
+  margin: 0.25em 0 0;
+}
+
+.md-preview a {
+  color: var(--muxy-accent);
+  text-decoration: none;
+}
+
+.md-preview a:hover {
+  text-decoration: underline;
+}
+
+.md-preview code {
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius);
+  background: var(--muxy-surface);
+  font: 0.9em "SF Mono", Menlo, monospace;
+}
+
+.md-preview pre {
+  margin: 0 0 0.85em;
+  padding: var(--s6);
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--muxy-surface);
+  line-height: 1.5;
+}
+
+.md-preview pre code {
+  display: block;
+  padding: 0;
+  white-space: pre;
+  background: transparent;
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+  line-height: inherit;
+}
+
+.md-preview blockquote {
+  margin: 0 0 0.85em;
+  padding: 0 var(--s6);
+  border-left: 3px solid var(--muxy-border);
+  color: var(--muxy-foreground-muted);
+}
+
+.md-preview table {
+  margin: 0 0 0.85em;
+  border-collapse: collapse;
+}
+
+.md-preview th,
+.md-preview td {
+  padding: var(--s3) var(--s5);
+  border: 1px solid var(--muxy-border);
+}
+
+.md-preview th {
+  background: var(--muxy-surface);
+  font-weight: 600;
+}
+
+/* Frontmatter properties (key | value), rendered above the body as a bordered
+   definition grid — avoids <table> layout pitfalls. */
+.md-frontmatter {
+  margin: 0 0 1.2em;
+  border: 1px solid var(--muxy-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.md-frontmatter-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 24%) 1fr;
+  border-top: 1px solid var(--muxy-border);
+}
+
+.md-frontmatter-row:first-child {
+  border-top: none;
+}
+
+.md-frontmatter dt {
+  padding: var(--s3) var(--s5);
+  border-right: 1px solid var(--muxy-border);
+  background: var(--muxy-surface);
+  color: var(--muxy-foreground-muted);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.md-frontmatter dd {
+  margin: 0;
+  padding: var(--s3) var(--s5);
+  color: var(--muxy-foreground);
+  word-break: break-word;
+}
+
+.md-preview img {
+  max-width: 100%;
+}
+
+.md-preview hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid var(--muxy-border);
+}
+
+.md-preview ul li {
+  list-style: disc;
+}
+
+.md-preview ol li {
+  list-style: decimal;
+}
+
+.md-preview input[type="checkbox"] {
+  margin-right: var(--s3);
+}
+
+/* --- settings sheet (slides in from the right edge) --- */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--muxy-background) 45%, transparent);
+  animation: sheet-fade 0.12s ease;
+}
+
+.sheet {
+  display: flex;
+  width: 300px;
+  max-width: calc(100vw - var(--s9));
+  height: 100%;
+  flex-direction: column;
+  gap: var(--s6);
+  padding: var(--s7);
+  border-left: 1px solid var(--muxy-border);
+  background: var(--muxy-background);
+  overflow-y: auto;
+  animation: sheet-slide 0.16s ease;
+}
+
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-slide {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-overlay,
+  .sheet {
+    animation: none;
+  }
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--muxy-border);
+}
+
+.sheet-title {
+  font-size: var(--font-title);
+  font-weight: 600;
+}
+
+.sheet-row {
+  display: flex;
+  min-height: var(--control);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s5);
+}
+
+.sheet-label {
+  color: var(--muxy-foreground);
+  font-size: var(--font-body);
+}
+
+/* stepper (font size) */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.stepper-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: var(--font-emphasis, 13px);
+  line-height: 1;
+}
+
+.stepper-value {
+  min-width: 40px;
+  text-align: center;
+  font: var(--font-body) "SF Mono", Menlo, monospace;
+}
+
+/* segmented control (tab size) */
+.segmented {
+  display: flex;
+  border: 1px solid var(--muxy-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segment {
+  min-width: 32px;
+  padding: var(--s2) var(--s4);
+  border: none;
+  border-left: 1px solid var(--muxy-border);
+  background: var(--muxy-background);
+  color: var(--muxy-foreground-muted);
+  font-size: var(--font-body);
+  cursor: pointer;
+}
+
+.segment:first-child {
+  border-left: none;
+}
+
+.segment:hover {
+  background: var(--muxy-hover);
+}
+
+.segment-active {
+  background: var(--muxy-surface);
+  color: var(--muxy-foreground);
+}
+
+/* checkbox accent */
+.sheet-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--muxy-accent);
 }

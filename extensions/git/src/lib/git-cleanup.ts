@@ -1,4 +1,5 @@
-import { active_worktree_path, alert_error } from "@/lib/git";
+import { alert_error } from "@/lib/git";
+import { active_git_project_path } from "@/lib/project-scope";
 
 async function pull_quietly(project: string | undefined): Promise<void> {
   await muxy.git.pull({ project }).catch(() => undefined);
@@ -11,20 +12,18 @@ interface CleanupTarget {
 }
 
 export async function active_project_path(): Promise<string | undefined> {
-  const projects = await muxy.projects.list().catch(() => [] as MuxyProject[]);
-  const fromProjects = projects.find((p) => p.isActive)?.path ?? projects[0]?.path;
-  if (fromProjects) return fromProjects;
-  const active = await active_worktree();
-  return active?.path ?? (await active_worktree_path());
+  return active_git_project_path();
 }
 
 export async function active_worktree(project?: string): Promise<MuxyWorktree | undefined> {
   const worktrees = await muxy.worktrees.list(project).catch(() => [] as MuxyWorktree[]);
+  const active = worktrees.find((w) => w.isActive);
+  if (active) return active;
+
   const info = await muxy.git.repoInfo({ project }).catch(() => null);
   const toplevel = info?.root;
   return (
     (toplevel ? worktrees.find((w) => w.path === toplevel) : undefined) ??
-    worktrees.find((w) => w.isActive) ??
     worktrees.find((w) => w.isPrimary)
   );
 }
@@ -66,8 +65,8 @@ export async function remove_worktree_or_branch({
   branch,
   defaultBranch,
   dirty,
-}: CleanupTarget): Promise<void> {
-  const project = await active_project_path();
+}: CleanupTarget, project?: string): Promise<void> {
+  project ??= await active_project_path();
 
   if (await is_on_worktree(project)) {
     await remove_active_worktree(branch, dirty, project);
@@ -97,10 +96,10 @@ export async function remove_worktree_or_branch({
   await muxy.worktrees.refresh(project);
 }
 
-export async function cleanup_branch(target: CleanupTarget): Promise<boolean> {
+export async function cleanup_branch(target: CleanupTarget, project?: string): Promise<boolean> {
   if (!target.branch) return false;
   try {
-    await remove_worktree_or_branch(target);
+    await remove_worktree_or_branch(target, project);
     return true;
   } catch (err) {
     await alert_error("Cleanup failed", err);
