@@ -420,7 +420,7 @@ export class GitPanelApp {
         await this.runRowAction(number, "checkout", async () => {
             await runPinned((project) => checkoutPr(number, project));
             await muxy.worktrees.refresh().catch(() => undefined);
-            await muxy.toast({ body: `Checked out PR #${number}`, variant: "success" });
+            await muxy.toast({ body: `Checked out PR #${number}`, variant: "success" }).catch(() => undefined);
         }, `Could not checkout PR #${number}`);
     }
     async checkoutPrWorktreeRow(number) {
@@ -434,7 +434,7 @@ export class GitPanelApp {
         await this.runRowAction(number, "worktree", async () => {
             const branch = await runPinned((project) => checkoutPrWorktree(number, project));
             if (branch)
-                await muxy.toast({ body: `PR #${number} in worktree (${branch})`, variant: "success" });
+                await muxy.toast({ body: `PR #${number} in worktree (${branch})`, variant: "success" }).catch(() => undefined);
         }, `Could not create worktree for PR #${number}`);
     }
     async closePrRow(number) {
