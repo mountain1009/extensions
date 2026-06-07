@@ -1,9 +1,10 @@
 import { cls, h } from "@/lib/dom";
 import { confirmAction, openUrl } from "@/lib/git";
 import { openPrDiff } from "@/lib/git";
-import { branchNameFromTitle, prState } from "@/lib/pr";
+import { branchNameFromTitle, parentDir, prState } from "@/lib/pr";
 import { icon } from "@/lib/icons";
 import { button, centered, iconButton, input, smallIconButton, textarea, } from "@/ui/shared";
+import { chooseFolder } from "@/ui/folder-picker";
 import { updateCreateTitle } from "@/panel/branch";
 const FILTERS = [
     { value: "open", label: "Open" },
@@ -14,7 +15,45 @@ const FILTERS = [
 export function renderPrsTab(app, status) {
     const pr = status.pullRequest;
     const dirty = status.staged.length > 0 || status.unstaged.length > 0;
-    return h("div", { class: "flex min-h-0 flex-1 flex-col" }, h("section", { class: "flex flex-col gap-2 border-b border-border p-2.5" }, pr ? renderCurrentPr(app, pr, status, dirty) : renderCreatePrForm(app, status)), renderPrList(app));
+    const top = app.worktreeForm
+        ? renderWorktreeForm(app)
+        : pr
+            ? renderCurrentPr(app, pr, status, dirty)
+            : renderCreatePrForm(app, status);
+    return h("div", { class: "flex min-h-0 flex-1 flex-col" }, h("section", { class: "flex flex-col gap-2 border-b border-border p-2.5" }, top), renderPrList(app));
+}
+function renderWorktreeForm(app) {
+    const form = app.worktreeForm;
+    const field = input(form.path, "Worktree path", (value) => {
+        form.path = value;
+    }, "font-mono", "worktree-path");
+    field.addEventListener("keydown", (event) => {
+        if (event.key === "Enter")
+            void app.submitWorktreeForm();
+    });
+    return h("div", { class: "flex flex-col gap-2" }, h("div", { class: "flex items-center gap-1.5" }, icon("folderGit", 13, "text-muted-foreground", 2), h("span", { class: "text-[12px] font-semibold text-foreground" }, `Checkout PR #${form.number} to worktree`)), h("div", { class: "flex items-center gap-1" }, field, button("Browse", {
+        iconName: "folderGit",
+        variant: "outline",
+        size: "md",
+        disabled: form.busy,
+        onClick: async () => {
+            const picked = await chooseFolder(parentDir(form.path));
+            if (picked) {
+                form.path = `${picked}/pr-${form.number}`;
+                app.render();
+                app.root.querySelector('[data-focus-key="worktree-path"]')?.focus();
+            }
+        },
+    })), h("div", { class: "flex items-center justify-end gap-1.5" }, button("Cancel", {
+        variant: "ghost",
+        disabled: form.busy,
+        onClick: () => app.cancelWorktreeForm(),
+    }), button("Create worktree", {
+        iconName: "folderGit",
+        loading: form.busy,
+        disabled: form.busy || form.path.trim() === "",
+        onClick: () => void app.submitWorktreeForm(),
+    })));
 }
 function renderCreatePrForm(app, status) {
     let branchInput;
@@ -73,13 +112,15 @@ async function submitCreate(app, status) {
     app.createForm.busy = true;
     app.render();
     try {
-        await app.createPullRequest({
+        const created = await app.createPullRequest({
             title: app.createForm.title.trim(),
             body: app.createForm.body.trim(),
             baseBranch: status.defaultBranch ?? undefined,
             newBranch: app.createForm.newBranch.trim() || undefined,
             draft: app.createForm.draft,
         });
+        if (created)
+            app.resetCreateForm();
     }
     finally {
         app.createForm.busy = false;

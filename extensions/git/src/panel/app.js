@@ -1,7 +1,7 @@
 import { clear, h, readPref, writePref } from "@/lib/dom";
 import { computeLanes, toCommitNode } from "@/lib/graph";
 import { alertError, activeWorktreePath, commitAll, confirmAction, hasPendingChanges, isBusy, onBusyChange, runPinned, toViewStatus, tryAction, } from "@/lib/git";
-import { checkoutPr, checkoutPrWorktree, cleanupBranch, closePr, confirmOpenExistingPr, createPr, mergePr, removeWorktreeOrBranch, } from "@/lib/pr";
+import { checkoutPr, checkoutPrWorktree, cleanupBranch, closePr, confirmOpenExistingPr, createPr, mergePr, parentDir, removeWorktreeOrBranch, worktreePathIn, } from "@/lib/pr";
 import * as cmd from "@/lib/cmd";
 import { icon } from "@/lib/icons";
 import { button, emptyState, iconButton, loadingOverlay } from "@/ui/shared";
@@ -11,8 +11,20 @@ import { renderPrsTab } from "@/panel/prs";
 const TAB_KEY = "muxy.git.panel.tab";
 const FILTER_KEY = "muxy.git.prs.filter";
 const PR_CACHE_KEY = "muxy.git.prs.cache";
+const WORKTREE_DIR_KEY = "muxy.git.worktree.dir";
 const PAGE = 50;
 const PR_LIMIT = 50;
+function emptyCreateForm() {
+    return {
+        title: "",
+        body: "",
+        newBranch: "",
+        branchEdited: false,
+        draft: false,
+        advanced: false,
+        busy: false,
+    };
+}
 function readPrListCache() {
     try {
         const entries = JSON.parse(localStorage.getItem(PR_CACHE_KEY) || "[]");
@@ -51,15 +63,8 @@ export class GitPanelApp {
     prStarted = false;
     prRowPending = new Map();
     graph = { rows: [], hasMore: false, loading: true };
-    createForm = {
-        title: "",
-        body: "",
-        newBranch: "",
-        branchEdited: false,
-        draft: false,
-        advanced: false,
-        busy: false,
-    };
+    createForm = emptyCreateForm();
+    worktreeForm = null;
     refreshId = 0;
     statusCache = new Map();
     pendingSwitch = false;
@@ -148,6 +153,9 @@ export class GitPanelApp {
     }
     setMessage(message) {
         this.message = message;
+    }
+    resetCreateForm() {
+        this.createForm = emptyCreateForm();
     }
     async initRepo() {
         const cwd = await activeWorktreePath();
@@ -317,7 +325,7 @@ export class GitPanelApp {
             return false;
         }
         try {
-            await removeWorktreeOrBranch({ branch: target.branch, defaultBranch: target.defaultBranch, dirty: false }, cleanupCwd);
+            await removeWorktreeOrBranch({ branch: target.branch, defaultBranch: target.defaultBranch, dirty: true }, cleanupCwd);
         }
         catch (err) {
             await alertError(`PR #${number} merged, but branch cleanup failed`, err);
@@ -440,16 +448,34 @@ export class GitPanelApp {
         }, `Could not checkout PR #${number}`);
     }
     async checkoutPrWorktreeRow(number) {
-        const ok = await confirmAction({
-            title: `Checkout PR #${number} to worktree?`,
-            message: `This creates a new worktree for pull request #${number} and switches to it.`,
-            confirmLabel: "Continue",
-        });
-        if (!ok)
+        const cwd = await activeWorktreePath();
+        const dir = readPref(WORKTREE_DIR_KEY, "") || parentDir(cwd);
+        this.worktreeForm = { number, path: worktreePathIn(dir, number), busy: false };
+        this.render();
+    }
+    cancelWorktreeForm() {
+        this.worktreeForm = null;
+        this.render();
+    }
+    async submitWorktreeForm() {
+        const form = this.worktreeForm;
+        if (!form || form.busy)
             return;
-        await this.runRowAction(number, "worktree", async () => {
-            await runPinned((cwd) => checkoutPrWorktree(number, cwd));
-        }, `Could not create worktree for PR #${number}`);
+        const path = form.path.trim();
+        if (!path)
+            return;
+        form.busy = true;
+        this.render();
+        const cwd = await activeWorktreePath();
+        const ok = await tryAction(() => runPinned(() => checkoutPrWorktree(form.number, path, cwd)), `Could not create worktree for PR #${form.number}`);
+        if (ok) {
+            writePref(WORKTREE_DIR_KEY, parentDir(path));
+            this.worktreeForm = null;
+        }
+        else if (this.worktreeForm) {
+            this.worktreeForm.busy = false;
+        }
+        this.render();
     }
     async closePrRow(number) {
         const ok = await confirmAction({
