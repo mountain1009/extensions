@@ -1,31 +1,33 @@
-@import "tailwindcss";
+/*
+ * AI Usage popover — hand-authored against the Muxy theme.
+ * Colors come only from --muxy-* tokens; spacing/font/radius from the Muxy scale.
+ */
 
-@theme inline {
-  --color-background: var(--muxy-background);
-  --color-foreground: var(--muxy-foreground);
-  --color-muted: var(--muxy-surface);
-  --color-muted-foreground: var(--muxy-foreground-muted);
-  --color-surface: var(--muxy-surface);
-  --color-primary: var(--muxy-accent);
-  --color-primary-foreground: var(--muxy-background);
-  --color-accent: var(--muxy-hover);
-  --color-accent-foreground: var(--muxy-foreground);
-  --color-border: var(--muxy-border);
-  --color-input: var(--muxy-border);
-  --color-ring: var(--muxy-accent);
-  --radius: 6px;
+:root {
+  --s1: 2px; --s2: 4px; --s3: 6px; --s4: 8px; --s5: 10px;
+  --s6: 12px; --s7: 16px; --s8: 20px; --s9: 24px; --s10: 32px;
+  --font-caption: 10px; --font-footnote: 11px; --font-body: 12px;
+  --font-emphasis: 13px; --font-title: 14px;
+  --icon: 14px; --control: 24px;
+  --radius-chip: 4px; --radius: 6px; --radius-card: 8px;
+
+  /* Softened theme tokens (derived, not new colors). */
+  --line-soft: color-mix(in srgb, var(--muxy-border) 72%, transparent);
+  --muted-soft: color-mix(in srgb, var(--muxy-foreground-muted) 82%, transparent);
+  --bar-track: color-mix(in srgb, var(--muxy-border) 72%, transparent);
 }
+
+* { box-sizing: border-box; }
 
 html,
 body {
   margin: 0;
-  /* No min-height: the popover host resizes to fit the rendered content, so
-     html/body must be free to collapse to their content height. */
+  /* No min-height: the popover host resizes to fit the rendered content. */
 }
 
 body {
   overflow-x: hidden;
-  font: 13px -apple-system, "SF Pro", system-ui, sans-serif;
+  font: var(--font-body) -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   /* Popovers sit over native macOS popover material that is already
      light/dark-aware, so the body stays transparent. */
   background: transparent;
@@ -34,16 +36,306 @@ body {
   user-select: none;
 }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
-
 button {
+  font: inherit;
   cursor: pointer;
+  border: 0;
+  background: none;
+  color: inherit;
 }
 
-button:disabled {
-  cursor: default;
+svg { display: block; flex: 0 0 auto; }
+
+/* ---- Layout ---- */
+
+.popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+  padding: var(--s7) var(--s7);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.header__title {
+  font-size: var(--font-title);
+  font-weight: 600;
+  color: var(--muxy-foreground-muted);
+}
+
+.header__spacer { flex: 1; }
+
+.header__time {
+  margin-right: var(--s2);
+  font-size: var(--font-footnote);
+  color: var(--muted-soft);
+}
+
+.spark { color: var(--muxy-foreground-muted); }
+
+/* ---- Icon buttons ---- */
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control);
+  height: var(--control);
+  border-radius: var(--radius);
+  color: var(--muxy-foreground-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.icon-btn:hover {
+  background: var(--muxy-hover);
+  color: var(--muxy-foreground);
+}
+
+.icon-btn:disabled { opacity: 0.6; cursor: default; }
+
+.icon-btn.is-active {
+  background: var(--muxy-hover);
+  color: var(--muxy-foreground);
+}
+
+.icon-btn.is-pinned { color: var(--muxy-accent); }
+
+.spin { animation: spin 900ms linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pin-glyph { transform: rotate(45deg); }
+
+/* ---- Status / empty text ---- */
+
+.status-text {
+  font-size: var(--font-body);
+  color: var(--muxy-foreground-muted);
+}
+
+/* ---- Settings panel ---- */
+
+.providers { display: flex; flex-direction: column; gap: var(--s7); }
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--muxy-surface) 60%, transparent);
+}
+
+.settings__label {
+  padding: var(--s1) var(--s3) var(--s2);
+  font-size: var(--font-footnote);
+  font-weight: 500;
+  color: var(--muted-soft);
+}
+
+.settings__divider {
+  height: 1px;
+  margin: var(--s2) var(--s3);
+  background: var(--line-soft);
+}
+
+.width-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s2) var(--s3);
+}
+
+.width-row__label {
+  flex: 1;
+  font-size: var(--font-footnote);
+  font-weight: 500;
+  color: var(--muted-soft);
+}
+
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s1);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+.segmented__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control);
+  height: 20px;
+  padding: 0 var(--s3);
+  border-radius: var(--radius-chip);
+  font-size: var(--font-footnote);
+  font-weight: 500;
+  color: var(--muxy-foreground-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.segmented__btn:hover {
+  background: var(--muxy-hover);
+  color: var(--muxy-foreground);
+}
+
+.segmented__btn.is-active {
+  background: var(--muxy-accent);
+  color: var(--muxy-background);
+}
+
+.provider-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  text-align: left;
+  transition: background 120ms ease;
+}
+
+.provider-opt:hover { background: var(--muxy-hover); }
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon);
+  height: var(--icon);
+  border: 1px solid var(--muxy-border);
+  border-radius: var(--radius-chip);
+  color: var(--muxy-background);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.checkbox.is-checked {
+  border-color: var(--muxy-accent);
+  background: var(--muxy-accent);
+}
+
+.provider-opt__name {
+  flex: 1;
+  font-size: var(--font-body);
+  color: var(--muxy-foreground-muted);
+}
+
+.provider-opt.is-checked .provider-opt__name,
+.provider-opt.is-checked .provider-glyph { color: var(--muxy-foreground); }
+
+.provider-glyph { color: var(--muxy-foreground-muted); }
+
+/* ---- Provider section ---- */
+
+.provider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.provider__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.provider__icon { color: var(--muxy-foreground); }
+
+.provider__name {
+  font-size: var(--font-body);
+  font-weight: 500;
+  color: var(--muxy-foreground);
+}
+
+.provider__message {
+  font-size: var(--font-body);
+  color: var(--muted-soft);
+}
+
+.provider__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+}
+
+/* ---- Metric row ---- */
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.metric__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.metric__label {
+  font-size: var(--font-body);
+  color: var(--muxy-foreground-muted);
+}
+
+.metric__spacer { flex: 1; }
+
+.metric__value {
+  font-size: var(--font-body);
+  font-weight: 500;
+  color: var(--muxy-foreground);
+}
+
+.metric__value.is-critical { color: var(--muxy-diff-remove); }
+
+.metric__detail {
+  font-size: var(--font-footnote);
+  color: var(--muted-soft);
+}
+
+/* Pace dots — mapped to Muxy semantic tokens (matches the native popover). */
+.pace-dot {
+  width: var(--s3);
+  height: var(--s3);
+  border-radius: 50%;
+}
+
+.pace-dot.is-ahead { background: var(--muxy-diff-add); }
+.pace-dot.is-on-track { background: var(--muxy-accent); }
+.pace-dot.is-behind { background: var(--muxy-diff-remove); }
+
+.bar {
+  height: var(--s2);
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bar-track);
+}
+
+.bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--muxy-accent);
+}
+
+.reset-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  font-size: var(--font-footnote);
+  color: var(--muted-soft);
+}
+
+.reset-row__pace {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
 }

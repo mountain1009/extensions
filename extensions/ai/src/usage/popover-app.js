@@ -1,4 +1,4 @@
-import { clear, h } from "@/lib/dom";
+import { clear, cls, h } from "@/lib/dom";
 import { icon, providerIcon } from "@/lib/icons";
 import {
   composeSnapshots,
@@ -259,16 +259,12 @@ export class UsagePopover {
   view() {
     return h(
       "div",
-      { class: "flex flex-col gap-3 px-4 py-3", style: `width: ${widthOption().width}px` },
+      { class: "popover", style: `width: ${widthOption().width}px` },
       this.header(),
       this.settingsOpen ? this.settingsPanel() : null,
-      this.statusText ? h("p", { class: "text-[12px] text-muted-foreground" }, this.statusText) : null,
+      this.statusText ? h("p", { class: "status-text" }, this.statusText) : null,
       this.snapshots.length > 0
-        ? h(
-            "div",
-            { class: "flex flex-col gap-4" },
-            ...this.snapshots.map((snapshot) => this.providerSection(snapshot)),
-          )
+        ? h("div", { class: "providers" }, ...this.snapshots.map((snapshot) => this.providerSection(snapshot)))
         : null,
     );
   }
@@ -278,29 +274,25 @@ export class UsagePopover {
       "button",
       {
         type: "button",
-        class: `flex size-6 items-center justify-center rounded-md outline-none transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60 ${
-          active ? "bg-accent text-foreground" : "text-muted-foreground"
-        }`,
+        class: cls("icon-btn", active && "is-active"),
         title: label,
         "aria-label": label,
         "aria-pressed": String(active),
         disabled,
         onclick,
       },
-      icon(name, 13, spin ? "animate-spin" : "", { strokeWidth: 2.25 }),
+      icon(name, 13, spin ? "spin" : ""),
     );
   }
 
   header() {
     return h(
       "div",
-      { class: "flex items-center gap-2" },
-      icon("sparkles", 14, "text-muted-foreground", { strokeWidth: 2 }),
-      h("span", { class: "text-[14px] font-semibold text-muted-foreground" }, "AI Usage"),
-      h("div", { class: "flex-1" }),
-      this.lastRefreshAt
-        ? h("span", { class: "mr-1 text-[11px] text-muted-foreground/70" }, relativeTime(this.lastRefreshAt))
-        : null,
+      { class: "header" },
+      icon("sparkles", 14, "spark"),
+      h("span", { class: "header__title" }, "AI Usage"),
+      h("div", { class: "header__spacer" }),
+      this.lastRefreshAt ? h("span", { class: "header__time" }, relativeTime(this.lastRefreshAt)) : null,
       this.iconButton({
         name: "refresh",
         label: "Refresh usage",
@@ -321,14 +313,10 @@ export class UsagePopover {
     const tracked = readTrackedProviderIDs();
     return h(
       "div",
-      { class: "flex flex-col gap-0.5 rounded-lg border border-border bg-surface/60 p-1.5" },
+      { class: "settings" },
       this.widthControl(),
-      h("div", { class: "mx-1.5 my-1 border-t border-border" }),
-      h(
-        "div",
-        { class: "px-1.5 pb-1 pt-0.5 text-[11px] font-medium text-muted-foreground/70" },
-        "Show in popover",
-      ),
+      h("div", { class: "settings__divider" }),
+      h("div", { class: "settings__label" }, "Show in popover"),
       ...providerCatalog.map((provider) => this.providerToggle(provider, tracked.has(provider.id))),
     );
   }
@@ -337,20 +325,18 @@ export class UsagePopover {
     const current = widthOption().id;
     return h(
       "div",
-      { class: "flex items-center gap-2 px-1.5 py-1" },
-      h("span", { class: "flex-1 text-[11px] font-medium text-muted-foreground/70" }, "Width"),
+      { class: "width-row" },
+      h("span", { class: "width-row__label" }, "Width"),
       h(
         "div",
-        { class: "flex items-center gap-0.5 rounded-md border border-border p-0.5" },
+        { class: "segmented" },
         ...WIDTH_OPTIONS.map((option) => {
           const active = option.id === current;
           return h(
             "button",
             {
               type: "button",
-              class: `flex h-5 min-w-6 items-center justify-center rounded px-1.5 text-[11px] font-medium outline-none transition-colors ${
-                active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`,
+              class: cls("segmented__btn", active && "is-active"),
               title: `${option.width}px`,
               "aria-label": `Width ${option.width}px`,
               "aria-pressed": String(active),
@@ -366,12 +352,8 @@ export class UsagePopover {
   providerToggle(provider, checked) {
     const box = h(
       "span",
-      {
-        class: `flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${
-          checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent"
-        }`,
-      },
-      checked ? icon("check", 11, "", { strokeWidth: 3 }) : null,
+      { class: cls("checkbox", checked && "is-checked") },
+      checked ? icon("check", 11) : null,
     );
 
     return h(
@@ -380,44 +362,31 @@ export class UsagePopover {
         type: "button",
         role: "menuitemcheckbox",
         "aria-checked": String(checked),
-        class:
-          "flex items-center gap-2 rounded-md px-1.5 py-1 text-left outline-none transition-colors hover:bg-accent",
+        class: cls("provider-opt", checked && "is-checked"),
         onclick: () => this.toggleProvider(provider.id),
       },
       box,
-      providerIcon(provider.icon, 13, checked ? "text-foreground" : "text-muted-foreground"),
-      h(
-        "span",
-        { class: `flex-1 text-[12px] ${checked ? "text-foreground" : "text-muted-foreground"}` },
-        provider.name,
-      ),
+      providerIcon(provider.icon, 13, "provider-glyph"),
+      h("span", { class: "provider-opt__name" }, provider.name),
     );
   }
 
   providerSection(snapshot) {
     const head = h(
       "div",
-      { class: "flex items-center gap-2" },
-      providerIcon(snapshot.icon, 14, "text-foreground"),
-      h("span", { class: "text-[12px] font-medium text-foreground" }, snapshot.name),
+      { class: "provider__head" },
+      providerIcon(snapshot.icon, 14, "provider__icon"),
+      h("span", { class: "provider__name" }, snapshot.name),
     );
 
     let body;
     if (snapshot.state.kind === "available") {
-      body = h(
-        "div",
-        { class: "flex flex-col gap-3" },
-        ...snapshot.rows.map((row) => this.metricRow(snapshot, row)),
-      );
+      body = h("div", { class: "provider__rows" }, ...snapshot.rows.map((row) => this.metricRow(snapshot, row)));
     } else {
-      body = h(
-        "p",
-        { class: "text-[12px] text-muted-foreground/80" },
-        snapshot.state.message || "No usage data",
-      );
+      body = h("p", { class: "provider__message" }, snapshot.state.message || "No usage data");
     }
 
-    return h("div", { class: "flex flex-col gap-1.5" }, head, body);
+    return h("div", { class: "provider" }, head, body);
   }
 
   metricRow(snapshot, row) {
@@ -438,46 +407,37 @@ export class UsagePopover {
     const critical = usageIsCritical(row, DISPLAY_MODE);
 
     const headChildren = [
-      h("span", { class: "text-[12px] text-muted-foreground" }, row.label),
-      pace ? h("span", { class: `size-1.5 shrink-0 rounded-full ${paceDotClass(pace.status)}` }) : null,
+      h("span", { class: "metric__label" }, row.label),
+      pace ? h("span", { class: cls("pace-dot", paceDotClass(pace.status)) }) : null,
       canPin
         ? h(
             "button",
             {
               type: "button",
-              class: `flex size-6 items-center justify-center rounded-md outline-none transition-colors hover:bg-accent ${
-                pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`,
+              class: cls("icon-btn", pinned && "is-pinned"),
               title: pinned ? "Unpin from status bar" : "Pin to status bar",
               "aria-label": pinned ? "Unpin from status bar" : "Pin to status bar",
               "aria-pressed": String(pinned),
               onclick: () => this.togglePin(encoded),
             },
-            icon("pin", 12, "rotate-45", { strokeWidth: 2, fill: pinned }),
+            icon("pin", 12, "pin-glyph", { fill: pinned }),
           )
         : null,
-      h("div", { class: "flex-1" }),
+      h("div", { class: "metric__spacer" }),
       display.percentText
-        ? h(
-            "span",
-            { class: `text-[12px] font-medium ${critical ? "text-red-500" : "text-foreground"}` },
-            display.percentText,
-          )
+        ? h("span", { class: cls("metric__value", critical && "is-critical") }, display.percentText)
         : null,
-      display.detail ? h("span", { class: "text-[11px] text-muted-foreground/70" }, display.detail) : null,
+      display.detail ? h("span", { class: "metric__detail" }, display.detail) : null,
     ];
 
-    const children = [h("div", { class: "flex items-center gap-2" }, ...headChildren)];
+    const children = [h("div", { class: "metric__head" }, ...headChildren)];
 
     if (display.percent !== null) {
       children.push(
         h(
           "div",
-          { class: "h-1 w-full overflow-hidden rounded-full bg-border" },
-          h("div", {
-            class: "h-full rounded-full bg-primary",
-            style: `width: ${Math.max(0, Math.min(100, display.percent))}%`,
-          }),
+          { class: "bar" },
+          h("div", { class: "bar__fill", style: `width: ${Math.max(0, Math.min(100, display.percent))}%` }),
         ),
       );
     }
@@ -486,21 +446,15 @@ export class UsagePopover {
       children.push(
         h(
           "div",
-          { class: "flex items-center gap-2" },
-          h(
-            "span",
-            { class: "text-[11px] text-muted-foreground/70" },
-            row.resetAt ? `Resets ${formatResetTime(row.resetAt)}` : "",
-          ),
-          h("div", { class: "flex-1" }),
-          pace?.detail
-            ? h("span", { class: "truncate text-[11px] text-muted-foreground/70" }, pace.detail)
-            : null,
+          { class: "reset-row" },
+          h("span", null, row.resetAt ? `Resets ${formatResetTime(row.resetAt)}` : ""),
+          h("div", { class: "metric__spacer" }),
+          pace?.detail ? h("span", { class: "reset-row__pace" }, pace.detail) : null,
         ),
       );
     }
 
-    return h("div", { class: "flex flex-col gap-1" }, ...children);
+    return h("div", { class: "metric" }, ...children);
   }
 }
 
@@ -511,9 +465,9 @@ function hasAvailableUsage(items) {
 }
 
 function paceDotClass(status) {
-  if (status === "ahead") return "bg-green-500";
-  if (status === "behind") return "bg-red-500";
-  return "bg-yellow-500";
+  if (status === "ahead") return "is-ahead";
+  if (status === "behind") return "is-behind";
+  return "is-on-track";
 }
 
 function formatResetTime(date) {

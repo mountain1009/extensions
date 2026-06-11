@@ -71,10 +71,43 @@ test("regression: html/body do not pin a height so the popover fits its content"
   assert.doesNotMatch(css, /height:\s*100vh/);
 });
 
-test("regression: chrome uses theme variables, never hardcoded colors", async () => {
+test("regression: chrome colors come only from --muxy-* tokens, never hex/Tailwind", async () => {
   const css = await readFile(new URL("../src/styles/global.css", import.meta.url), "utf8");
-  // The theme map references muxy vars; no raw hex fallbacks on muxy vars.
-  assert.match(css, /--color-foreground:\s*var\(--muxy-foreground\)/);
-  assert.match(css, /--color-muted-foreground:\s*var\(--muxy-foreground-muted\)/);
-  assert.doesNotMatch(css, /var\(--muxy-[^)]+,\s*#[0-9a-fA-F]{3,8}/);
+
+  // Every color references a Muxy token; no hex literals anywhere in the chrome
+  // (the only `white` allowed earlier is gone, and there are no #rrggbb values).
+  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/);
+  // No Tailwind: no @import "tailwindcss", no @theme/@apply, no -500 palette.
+  assert.doesNotMatch(css, /tailwind/i);
+  assert.doesNotMatch(css, /@(theme|apply)/);
+  assert.doesNotMatch(css, /-(green|red|yellow|blue|gray|slate)-\d{3}/);
+
+  assert.match(css, /color:\s*var\(--muxy-foreground\)/);
+});
+
+test("regression: pace dots and critical text map to Muxy semantic tokens", async () => {
+  const css = await readFile(new URL("../src/styles/global.css", import.meta.url), "utf8");
+  // ahead -> diff-add, on-track -> accent, behind -> diff-remove (matches native).
+  assert.match(css, /\.pace-dot\.is-ahead\s*\{[^}]*var\(--muxy-diff-add\)/s);
+  assert.match(css, /\.pace-dot\.is-on-track\s*\{[^}]*var\(--muxy-accent\)/s);
+  assert.match(css, /\.pace-dot\.is-behind\s*\{[^}]*var\(--muxy-diff-remove\)/s);
+  // Critical usage value uses the error token, not a Tailwind red.
+  assert.match(css, /\.is-critical\s*\{[^}]*var\(--muxy-diff-remove\)/s);
+});
+
+test("regression: popover markup carries no Tailwind utility classes", async () => {
+  const source = await readFile(new URL("../src/usage/popover-app.js", import.meta.url), "utf8");
+  // No leftover palette/utility classes from the Tailwind era.
+  assert.doesNotMatch(source, /bg-(green|red|yellow)-\d{3}/);
+  assert.doesNotMatch(source, /text-(red|green|yellow)-\d{3}/);
+  assert.doesNotMatch(source, /\b(bg-primary|bg-surface|text-muted-foreground|bg-accent)\b/);
+});
+
+test("regression: build no longer depends on Tailwind", async () => {
+  const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const dev = pkg.devDependencies || {};
+  assert.equal(dev.tailwindcss, undefined);
+  assert.equal(dev["@tailwindcss/vite"], undefined);
+  const vite = await readFile(new URL("../vite.config.js", import.meta.url), "utf8");
+  assert.doesNotMatch(vite, /tailwind/i);
 });
