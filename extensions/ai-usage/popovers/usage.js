@@ -31,8 +31,10 @@ const providerAccents = {
   copilot: "#7c3aed",
   cursor: "#f5c542",
   factory: "#00a6a6",
+  grok: "#a78bfa",
   kimi: "#4f7cff",
   minimax: "#ff6b6b",
+  "opencode-go": "#e879f9",
   zai: "#22c55e"
 };
 
@@ -40,7 +42,11 @@ let snapshots = [];
 let timer = null;
 
 function readPreferences() {
-  const preferences = preferencesFromStorage((key) => localStorage.getItem(`${storagePrefix}${key}`));
+  const storageKey = (key) => `${storagePrefix}${key}`;
+  const preferences = preferencesFromStorage(
+    (key) => localStorage.getItem(storageKey(key)),
+    (key, value) => localStorage.setItem(storageKey(key), value)
+  );
   preferences.enabled = true;
   preferences.includeSecondary = true;
   return preferences;
@@ -156,7 +162,7 @@ function providerView(provider, preferences, collapsed = false) {
   title.className = "provider-title";
   title.append(textSpan(provider.name, "provider-name"));
   head.append(icon, title);
-  const state = collapsed ? "Hidden" : snapshot?.state.kind === "available" ? "Live" : snapshot?.state.message || "No usage data";
+  const state = collapsed ? "Hidden" : snapshot?.state.kind === "available" ? (snapshot?.planName || "Live") : snapshot?.state.message || "No usage data";
   const stateClass = !collapsed && snapshot?.state.kind === "available" ? "provider-state available" : "provider-state";
   head.append(textSpan(state, stateClass));
   const toggle = document.createElement("input");
@@ -168,10 +174,13 @@ function providerView(provider, preferences, collapsed = false) {
     if (toggle.checked) next.trackedProviderIDs.add(provider.id);
     else next.trackedProviderIDs.delete(provider.id);
     writePreferences(next);
-    refresh();
+refresh();
   });
   head.append(toggle);
   section.append(head);
+  if (!collapsed && snapshot?.refreshMessage) {
+    section.append(refreshMessageView(snapshot.refreshMessage));
+  }
   if (!collapsed && snapshot?.state.kind === "available") {
     section.append(...snapshot.rows.map((row) => metricView(snapshot, row, preferences)));
   }
@@ -210,8 +219,10 @@ function metricView(snapshot, row, preferences) {
     await persistStatusCache(next);
   });
   head.append(pin);
-  if (display.percentText) head.append(textSpan(display.percentText, "metric-value"));
-  if (display.detail) head.append(textSpan(display.detail, "detail"));
+  if (display.percentText) {
+    const modeLabel = preferences.displayMode === "used" ? "Used" : "Remaining";
+    head.append(textSpan(`${modeLabel} ${display.percentText}`, "metric-value"));
+  }
   wrap.append(head);
   if (display.percent !== null) {
     const bar = document.createElement("div");
@@ -222,14 +233,20 @@ function metricView(snapshot, row, preferences) {
     bar.append(fill);
     wrap.append(bar);
   }
-  if (row.resetAt || pace?.detail) {
+  if (row.resetAt) {
     const reset = document.createElement("div");
     reset.className = "reset-row";
-    reset.append(textSpan(row.resetAt ? `Resets ${row.resetAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "", ""));
-    reset.append(textSpan(pace?.detail || "", ""));
+    reset.append(textSpan(row.resetAt ? `Resets ${row.resetAt.toLocaleDateString([], { month: "short", day: "numeric" })} ${row.resetAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "", ""));
     wrap.append(reset);
   }
   return wrap;
+}
+
+function refreshMessageView(message) {
+  const el = document.createElement("div");
+  el.className = "refresh-message";
+  el.textContent = message;
+  return el;
 }
 
 function textSpan(text, className) {
