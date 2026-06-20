@@ -112,12 +112,13 @@ function parsePorcelain(text) {
 }
 
 const PENDING_OP_PROBE = [
-    ["REVERT_HEAD", "revert"],
-    ["CHERRY_PICK_HEAD", "cherry-pick"],
-    ["MERGE_HEAD", "merge"],
-    ["REBASE_HEAD", "rebase"],
+    `[ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ] && { printf %s rebase; exit; }`,
+    ...[
+        ["REVERT_HEAD", "revert"],
+        ["CHERRY_PICK_HEAD", "cherry-pick"],
+        ["MERGE_HEAD", "merge"],
+    ].map(([ref, op]) => `git rev-parse --verify --quiet ${ref} >/dev/null 2>&1 && { printf %s ${op}; exit; }`),
 ]
-    .map(([ref, op]) => `git rev-parse --verify --quiet ${ref} >/dev/null 2>&1 && { printf %s ${op}; exit; }`)
     .join("; ");
 
 async function pendingOp(cwd) {
