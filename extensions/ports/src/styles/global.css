@@ -25,7 +25,7 @@ body,
 
 body {
   overflow: hidden;
-  font: 13px -apple-system, "SF Pro", system-ui, sans-serif;
+  font: 12px -apple-system, "SF Pro", system-ui, sans-serif;
   background: var(--muxy-background);
   color: var(--muxy-foreground);
 }
